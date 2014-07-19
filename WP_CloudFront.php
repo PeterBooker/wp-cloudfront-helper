@@ -1,7 +1,7 @@
 <?php
 /**
  * Plugin Name: WP CloudFront Helper
- * Plugin URI:  https://peterbooker.com
+ * Plugin URI:  https://github.com/PeterBooker/wp-cloudfront-helper
  * Description: Makes small changes which help you to use AWS CloudFront for fullpage caching on WordPress.
  * Version:     1.0
  * Author:      Peter Booker
