@@ -15,7 +15,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 }
 
 /**
- * Add Last-Modified Header to WP Posts
+ * Add Last-Modified and Cache-Control Headers to WP Responses
  */
 function wp_cloudfront_filter_headers( $headers ) {
 
