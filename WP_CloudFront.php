@@ -14,64 +14,111 @@ if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
 
-if ( ! class_exists( 'WP_CloudFront' ) ) {
+/**
+ * Add Last-Modified Header to WP Posts
+ */
+function wp_cloudfront_filter_headers( $headers ) {
 
-    class WP_CloudFront {
+    /*
+     * WP already sets Cache-Control headers to avoid caching in the admin.
+     */
+    if ( is_admin() ) {
+        return $headers;
+    }
 
-        /**
-         * NewRelic API URL
-         *
-         * @var string
-         */
-        private $api_url = 'https://api.newrelic.com/v2/';
+    /*
+     * Set Last Modified header to current time
+     * Makes it easier to see when the cache was last refreshed
+     */
+    $modified = date( 'D, j M Y H:i:s e', time() );
 
-        /**
-         * NewRelic API Key
-         * http://docs.newrelic.com/docs/apis/api-key
-         *
-         * @var string
-         */
-        private $api_key;
+    $headers['Last-Modified'] = $modified;
 
-        /**
-         * Gets the Page Number
-         *
-         * @return int
-         */
-        public function get_page() {
+    /*
+     * Tell CloudFront not to cache certain responses.
+     */
+    if ( is_user_logged_in() || is_404() || is_preview() ) {
 
-            return $this->page;
+        $headers['Cache-Control'] = 'no-cache, must-revalidate, max-age=0, proxy-revalidate';
 
-        }
-
-        /**
-         * Sets the Page Number
-         *
-         * @param int $page
-         */
-        public function set_page( $page ) {
-
-            $this->page = $page;
-
-        }
-
-        /**
-         * Constructor
-         *
-         * @param string $api_key
-         */
-        public function __construct( $api_key ) {
-
-            $this->api_key = $api_key;
-
-        }
-		
-		private function set_cache_control() {
-		
-		}
+        return $headers;
 
     }
 
-}
+    if ( is_archive() ) {
 
-new WP_CloudFront();
+        $ttl = 5 * MINUTE_IN_SECONDS;
+
+    } if ( is_tax() ) {
+
+        $ttl = 5 * MINUTE_IN_SECONDS;
+
+    } if ( is_author() ) {
+
+        $ttl = 5 * MINUTE_IN_SECONDS;
+
+    } if ( is_search() ) {
+
+        $ttl = 1 * MINUTE_IN_SECONDS;
+
+    } elseif ( is_single() ) {
+
+        $ttl = 15 * MINUTE_IN_SECONDS;
+
+    } elseif ( is_page() ) {
+
+        $ttl = 30 * MINUTE_IN_SECONDS;
+
+    } elseif ( is_home() ) {
+
+        $ttl = 5 * MINUTE_IN_SECONDS;
+
+    } elseif ( is_front_page() ) {
+
+        $ttl = 15 * MINUTE_IN_SECONDS;
+
+    }
+
+    /*
+     * Define custom TTLs for specific Post Types
+     */
+    $post_types = array(
+        'post' => array(
+            'archive' => 5 * MINUTE_IN_SECONDS,
+            'single' => 15 * MINUTE_IN_SECONDS,
+        ),
+        'page' => array(
+            'archive' => 5 * MINUTE_IN_SECONDS,
+            'single' => 15 * MINUTE_IN_SECONDS,
+        ),
+    );
+
+    /*
+     * Set Custom TTL for each specified Post Type.
+     */
+    foreach ( $post_types as $post_type ) {
+
+        if ( is_archive() ) {
+
+            $ttl = $post_type['archive'];
+
+        } elseif ( is_singular() ) {
+
+            $ttl = $post_type['single'];
+
+        }
+
+    }
+
+    /*
+     * Set default TTL if not already set
+     * If none set CloudFront default is 24 hours
+     */
+    $ttl = 1 * MINUTE_IN_SECONDS;
+
+    $headers['Cache-Control'] = 'max-age=' . $ttl . ', public';
+
+    return $headers;
+
+}
+add_filter( 'wp_headers', 'wp_cloudfront_filter_headers' );
